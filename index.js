@@ -31,10 +31,10 @@ const fileName = path.basename(resolvedPath);
 // Serve the file directly
 app.get('/', (req, res) => {
   console.log(`[+] Download requested from ${req.ip}`);
-  
+
   // Set headers to force download and suggest filename
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  
+
   res.download(resolvedPath, fileName, (err) => {
     if (err) {
       if (res.headersSent) {
@@ -64,7 +64,7 @@ const start = async () => {
       console.log('======================================================\n');
       console.log('Share this URL with the receiver. Opening it will download the file directly from your machine:');
       console.log(`\n=>  ${tunnel.url}  <=\n`);
-      
+
       console.log('Note: Keep this terminal open until the download is complete.');
       console.log('Note: The first time the URL is opened, the receiver may see a localtunnel "bypass" page. They just need to click "Click to Continue".');
       console.log('Press Ctrl+C to stop sharing.\n');
