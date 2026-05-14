@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
-import WebTorrent from 'webtorrent';
-import fs from 'fs';
+import express from 'express';
+import localtunnel from 'localtunnel';
 import path from 'path';
+import fs from 'fs';
 
 const filePath = process.argv[2];
 
 if (!filePath) {
-  console.error('Usage: filet <full_path_of_file>');
+  console.error('Usage: filet <path_to_file>');
   process.exit(1);
 }
 
@@ -20,50 +21,64 @@ if (!fs.existsSync(resolvedPath)) {
 
 const stat = fs.statSync(resolvedPath);
 if (!stat.isFile()) {
-  console.error(`Error: ${resolvedPath} is not a file. Directories are not supported yet.`);
+  console.error(`Error: ${resolvedPath} is not a file.`);
   process.exit(1);
 }
 
-const client = new WebTorrent();
+const app = express();
+const fileName = path.basename(resolvedPath);
 
-console.log(`Preparing to share: ${path.basename(resolvedPath)}`);
-console.log('Initializing WebTorrent...');
-
-client.seed(resolvedPath, (torrent) => {
-  console.log('\n======================================================');
-  console.log('File is now being shared via Direct Peer Connection!');
-  console.log('======================================================\n');
+// Serve the file directly
+app.get('/', (req, res) => {
+  console.log(`[+] Download requested from ${req.ip}`);
   
-  // Instant.io URL for easy browser downloading
-  const shareUrl = `https://instant.io/#${torrent.infoHash}`;
+  // Set headers to force download and suggest filename
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   
-  console.log('Share this URL with the receiver. They can open it in any web browser to download directly from your system:');
-  console.log(`\n=>  ${shareUrl}  <=\n`);
-  
-  console.log('Note: Keep this terminal window open until the transfer is complete.');
-  console.log('Press Ctrl+C to stop sharing.\n');
-
-  torrent.on('wire', (wire, addr) => {
-    console.log(`[+] Connected to peer: ${addr || 'Unknown Browser Peer'}`);
-  });
-
-  let lastLoggedProgress = 0;
-  const interval = setInterval(() => {
-    if (torrent.uploaded > 0) {
-      const progress = (torrent.uploaded / torrent.length) * 100;
-      if (progress - lastLoggedProgress >= 5 || progress === 100) {
-        console.log(`Upload Progress: ${progress.toFixed(1)}% (${(torrent.uploaded / 1024 / 1024).toFixed(2)} MB / ${(torrent.length / 1024 / 1024).toFixed(2)} MB)`);
-        lastLoggedProgress = progress;
+  res.download(resolvedPath, fileName, (err) => {
+    if (err) {
+      if (res.headersSent) {
+        // Headers already sent, can't do much
+      } else {
+        console.error('[-] Error sending file:', err.message);
+        res.status(500).send('Error downloading file');
       }
+    } else {
+      console.log(`[+] Successfully sent ${fileName}`);
     }
-  }, 2000);
-
-  torrent.on('done', () => {
-     console.log('Transfer may be complete (or finished sending out chunks). Keeping the connection open for seeding.');
   });
 });
 
-client.on('error', (err) => {
-  console.error('WebTorrent Error:', err.message);
-  process.exit(1);
-});
+const start = async () => {
+  const server = app.listen(0, async () => {
+    const port = server.address().port;
+    console.log(`Preparing to share: ${resolvedPath}`);
+    console.log(`Local server running on port ${port}`);
+    console.log('Establishing secure tunnel relay...');
+
+    try {
+      const tunnel = await localtunnel({ port });
+
+      console.log('\n======================================================');
+      console.log('File is now accessible via Direct Tunnel!');
+      console.log('======================================================\n');
+      console.log('Share this URL with the receiver. Opening it will download the file directly from your machine:');
+      console.log(`\n=>  ${tunnel.url}  <=\n`);
+      
+      console.log('Note: Keep this terminal open until the download is complete.');
+      console.log('Note: The first time the URL is opened, the receiver may see a localtunnel "bypass" page. They just need to click "Click to Continue".');
+      console.log('Press Ctrl+C to stop sharing.\n');
+
+      tunnel.on('close', () => {
+        console.log('\nTunnel closed. Stopping server.');
+        process.exit(0);
+      });
+
+    } catch (err) {
+      console.error('\nError creating tunnel:', err.message);
+      process.exit(1);
+    }
+  });
+};
+
+start();
