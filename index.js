@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const WebTorrent = require('webtorrent');
-const fs = require('fs');
-const path = require('path');
+import WebTorrent from 'webtorrent';
+import fs from 'fs';
+import path from 'path';
 
 const filePath = process.argv[2];
 
