@@ -1,21 +1,32 @@
 {
-  "name": "file-transfer-url",
+  "name": "filet",
   "version": "1.0.0",
-  "description": "",
+  "description": "Share local files instantly via a public URL, streamed directly from your machine.",
   "main": "index.js",
+  "type": "module",
+  "bin": {
+    "filet": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "file-sharing",
+    "cli",
+    "localtunnel",
+    "transfer"
+  ],
+  "author": "NiladriChatterje",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "express": "^5.2.1",
-    "localtunnel": "^2.0.2",
-    "webtorrent": "^2.8.5"
-  },
-  "bin": {
-    "filet": "./index.js"
+    "localtunnel": "^2.0.2"
   }
 }

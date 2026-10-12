@@ -10,6 +10,14 @@
 *   **Direct Streaming**: The file is streamed directly from your disk to the receiver's browser, ensuring no data is stored permanently on any intermediate server.
 *   **ES Modules**: Built using modern JavaScript standards for better performance and maintainability.
 
+## Installation
+
+```bash
+npm install -g filet
+```
+
+The `-g` flag is required so the `filet` command is added to your PATH.
+
 ## Usage
 
 You can share a single file or multiple files simultaneously:
