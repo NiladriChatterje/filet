@@ -13,7 +13,7 @@
 ## Installation
 
 ```bash
-npm install -g filet
+npm install -g @niladri2000/filet
 ```
 
 The `-g` flag is required so the `filet` command is added to your PATH.

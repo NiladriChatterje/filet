@@ -1,5 +1,5 @@
 {
-  "name": "filet",
+  "name": "@niladri2000/filet",
   "version": "1.0.0",
   "description": "Share local files instantly via a public URL, streamed directly from your machine.",
   "main": "index.js",
