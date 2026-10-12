@@ -1,6 +1,6 @@
 {
-  "name": "@niladri2000/filet",
-  "version": "1.0.0",
+  "name": "filet-cli",
+  "version": "1.0.1",
   "description": "Share local files instantly via a public URL, streamed directly from your machine.",
   "main": "index.js",
   "type": "module",
