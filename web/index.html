@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>filet</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1d1f23;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #0066cc;
+      --accent-hover: #0052a3;
+      --ok: #15803d;
+      --warn: #b45309;
+      --err: #b91c1c;
+      --bar: #e5e7eb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111318;
+        --card: #1a1d24;
+        --text: #e6e7ea;
+        --muted: #9aa0ab;
+        --line: #2a2f3a;
+        --accent: #4d9fff;
+        --accent-hover: #74b4ff;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --err: #f87171;
+        --bar: #2a2f3a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.45;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+    .status {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--card); font-size: 14px; margin-bottom: 20px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+    .status.ok .dot { background: var(--ok); }
+    .status.warn .dot { background: var(--warn); }
+    .status.err .dot { background: var(--err); }
+    .status.busy .dot { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: .35 } 50% { opacity: 1 } }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .name { font-weight: 600; word-break: break-all; }
+    .size { color: var(--muted); font-size: 13px; margin-left: 8px; white-space: nowrap; }
+    button {
+      background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+      padding: 8px 16px; font-size: 14px; cursor: pointer; flex: none;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: .5; cursor: default; }
+    .bar { height: 6px; background: var(--bar); border-radius: 3px; margin-top: 10px; overflow: hidden; display: none; }
+    .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
+    .note { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 1em; }
+    .fallback {
+      display: none; margin-top: 24px; padding: 16px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--card); font-size: 14px;
+    }
+    .fallback a { color: var(--accent); word-break: break-all; }
+    footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>filet</h1>
+    <p class="sub">Files shared directly from the sender's machine.</p>
+
+    <div id="status" class="status busy"><span class="dot"></span><span id="statusText">Connecting to sender…</span></div>
+
+    <ul id="files"></ul>
+
+    <div id="fallback" class="fallback">
+      <strong>Direct connection not available.</strong>
+      <div id="fallbackBody" style="margin-top:6px"></div>
+    </div>
+
+    <footer>Downloads go straight from the sender to you. Nothing is stored on a server.</footer>
+  </main>
+
+  <script>
+    // ---------------------------------------------------------------------
+    // Configuration: set this to your Render signaling server URL.
+    // ---------------------------------------------------------------------
+    const CONFIG = {
+      signalUrl: 'wss://filet-signal.onrender.com',
+    };
+
+    const CONNECT_TIMEOUT_MS = 15000;
+    const ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $('status'), statusText = $('statusText'), filesEl = $('files');
+    const fallbackEl = $('fallback'), fallbackBody = $('fallbackBody');
+
+    // The link looks like  https://page/#ROOM  or, for local testing,
+    // https://page/#r=ROOM&s=ws://localhost:8787
+    const { room, signalUrl } = parseHash(location.hash);
+
+    let ws = null, pc = null, dc = null;
+    let info = null, fallbackUrl = null;
+    let directReady = false, directFailed = false, hostGone = false;
+    let connectTimer = null;
+    let pendingCandidates = [];
+    let remoteSet = false;
+    let current = null;
+    const queue = [];
+    const rows = new Map();
+
+    if (!room) {
+      setStatus('err', 'This link is missing its share code.');
+    } else {
+      connectSignaling();
+    }
+
+    // ----------------------------------------------------------------- UI
+
+    function setStatus(kind, text) {
+      statusEl.className = 'status ' + kind;
+      statusText.textContent = text;
+    }
+
+    function fmtSize(n) {
+      if (n < 1024) return n + ' B';
+      const u = ['KB', 'MB', 'GB', 'TB'];
+      let i = -1;
+      do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+      return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
+    }
+
+    function renderFiles() {
+      filesEl.innerHTML = '';
+      rows.clear();
+      for (const f of info.files) {
+        const li = document.createElement('li');
+        const row = document.createElement('div'); row.className = 'row';
+        const left = document.createElement('div');
+        const name = document.createElement('span'); name.className = 'name'; name.textContent = f.name;
+        const size = document.createElement('span'); size.className = 'size'; size.textContent = fmtSize(f.size);
+        left.append(name, size);
+        const btn = document.createElement('button'); btn.textContent = 'Download';
+        btn.disabled = !directReady;
+        btn.addEventListener('click', () => requestDownload(f));
+        row.append(left, btn);
+        const bar = document.createElement('div'); bar.className = 'bar'; bar.appendChild(document.createElement('div'));
+        const note = document.createElement('div'); note.className = 'note';
+        li.append(row, bar, note);
+        filesEl.appendChild(li);
+        rows.set(f.index, { btn, bar, fill: bar.firstChild, note });
+      }
+    }
+
+    function setButtons(enabled) {
+      for (const r of rows.values()) r.btn.disabled = !enabled;
+    }
+
+    function showFallback() {
+      fallbackEl.style.display = 'block';
+      if (fallbackUrl) {
+        fallbackBody.innerHTML = '';
+        const p = document.createElement('div');
+        p.textContent = 'Download through the relay instead: ';
+        const a = document.createElement('a'); a.href = fallbackUrl; a.textContent = fallbackUrl; a.target = '_blank'; a.rel = 'noopener';
+        p.appendChild(a);
+        const hint = document.createElement('div'); hint.className = 'note';
+        hint.textContent = 'The relay may first show a "Click to Continue" page.';
+        fallbackBody.append(p, hint);
+      } else {
+        fallbackBody.textContent = hostGone
+          ? 'The sender has stopped sharing.'
+          : 'Waiting for the sender\'s relay link to become ready…';
+      }
+    }
+
+    // ---------------------------------------------------------- signaling
+
+    function parseHash(hash) {
+      const raw = hash.replace(/^#/, '');
+      if (!raw) return { room: null, signalUrl: CONFIG.signalUrl };
+      if (raw.includes('=')) {
+        const p = new URLSearchParams(raw);
+        return { room: p.get('r'), signalUrl: p.get('s') || CONFIG.signalUrl };
+      }
+      return { room: raw, signalUrl: CONFIG.signalUrl };
+    }
+
+    function sendSignal(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'signal', data }));
+    }
+
+    function connectSignaling() {
+      ws = new WebSocket(signalUrl);
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room }));
+      ws.onmessage = (ev) => {
+        let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+        switch (msg.type) {
+          case 'joined':
+            setStatus('busy', 'Connected to sender, negotiating direct connection…');
+            startPeer();
+            break;
+          case 'signal':
+            handleSignal(msg.data);
+            break;
+          case 'host-left':
+            hostGone = true;
+            if (!current) {
+              setStatus('err', 'The sender has stopped sharing.');
+              setButtons(false);
+            }
+            break;
+          case 'error':
+            setStatus('err', msg.error === 'no-such-room'
+              ? 'This link has expired or the sender has stopped sharing.'
+              : 'Signaling error: ' + msg.error);
+            break;
+        }
+      };
+      ws.onerror = () => {
+        if (!directReady) setStatus('err', 'Could not reach the signaling server.');
+      };
+      ws.onclose = () => {
+        if (!directReady && !hostGone && statusEl.classList.contains('busy')) {
+          setStatus('err', 'Lost the signaling connection before a direct link was made.');
+        }
+      };
+    }
+
+    async function handleSignal(data) {
+      if (!data) return;
+      if (data.type === 'info') {
+        info = data;
+        fallbackUrl = data.fallbackUrl || null;
+        if (!rows.size) renderFiles();
+        if (directFailed) showFallback();
+        return;
+      }
+      if (!pc) return;
+      try {
+        if (data.type === 'answer' && data.sdp) {
+          await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+          remoteSet = true;
+          for (const c of pendingCandidates) await pc.addIceCandidate(c).catch(() => {});
+          pendingCandidates = [];
+        } else if (data.candidate) {
+          const cand = { candidate: data.candidate, sdpMid: data.sdpMid ?? '0' };
+          if (remoteSet) await pc.addIceCandidate(cand).catch(() => {});
+          else pendingCandidates.push(cand);
+        }
+      } catch (err) {
+        console.error('signal error', err);
+      }
+    }
+
+    // -------------------------------------------------------------- WebRTC
+
+    async function startPeer() {
+      pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      dc = pc.createDataChannel('filet', { ordered: true });
+      dc.binaryType = 'arraybuffer';
+
+      dc.onopen = () => {
+        directReady = true;
+        clearTimeout(connectTimer);
+        setStatus('ok', 'Direct connection established. Files come straight from the sender.');
+        setButtons(true);
+      };
+      dc.onmessage = onData;
+      dc.onclose = () => {
+        if (current) failCurrent('Connection closed during transfer.');
+        if (directReady) {
+          directReady = false;
+          setButtons(false);
+          setStatus('err', hostGone ? 'The sender has stopped sharing.' : 'Direct connection closed.');
+        }
+      };
+
+      pc.onicecandidate = (ev) => {
+        if (ev.candidate && ev.candidate.candidate) {
+          sendSignal({ candidate: ev.candidate.candidate, sdpMid: ev.candidate.sdpMid });
+        }
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'failed') directFail();
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal({ type: 'offer', sdp: offer.sdp });
+
+      connectTimer = setTimeout(() => { if (!directReady) directFail(); }, CONNECT_TIMEOUT_MS);
+    }
+
+    function directFail() {
+      if (directReady || directFailed) return;
+      directFailed = true;
+      clearTimeout(connectTimer);
+      setStatus('warn', 'A direct connection could not be made on this network.');
+      setButtons(false);
+      showFallback();
+    }
+
+    // ----------------------------------------------------------- transfer
+
+    async function requestDownload(file) {
+      if (!directReady) return;
+      const r = rows.get(file.index);
+
+      // Chrome and Edge can stream straight to disk; other browsers buffer in memory.
+      let writable = null;
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({ suggestedName: file.name });
+          writable = await handle.createWritable();
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          writable = null;
+        }
+      }
+
+      r.btn.disabled = true;
+      r.note.textContent = current ? 'Queued…' : 'Requesting…';
+      queue.push({ ...file, writable, chunks: [], received: 0, writeChain: Promise.resolve(), lastPaint: 0 });
+      pump();
+    }
+
+    function pump() {
+      if (current || !queue.length) return;
+      current = queue.shift();
+      dc.send(JSON.stringify({ type: 'get', index: current.index }));
+    }
+
+    function onData(ev) {
+      if (typeof ev.data === 'string') {
+        let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+        if (!current) return;
+        if (msg.type === 'start') {
+          const r = rows.get(current.index);
+          r.bar.style.display = 'block';
+          r.fill.style.width = '0%';
+          r.note.textContent = 'Downloading… 0%';
+        } else if (msg.type === 'done') {
+          finishCurrent();
+        } else if (msg.type === 'error') {
+          failCurrent(msg.error || 'Transfer failed.');
+        }
+        return;
+      }
+
+      if (!current) return;
+      const buf = ev.data;
+      current.received += buf.byteLength;
+      if (current.writable) {
+        current.writeChain = current.writeChain.then(() => current.writable.write(buf));
+      } else {
+        current.chunks.push(buf);
+      }
+      const now = performance.now();
+      if (now - current.lastPaint > 100) {
+        current.lastPaint = now;
+        paintProgress();
+      }
+    }
+
+    function paintProgress() {
+      const r = rows.get(current.index);
+      const pct = current.size ? Math.min(100, (current.received / current.size) * 100) : 100;
+      r.fill.style.width = pct.toFixed(1) + '%';
+      r.note.textContent = `Downloading… ${pct.toFixed(0)}% (${fmtSize(current.received)} of ${fmtSize(current.size)})`;
+    }
+
+    async function finishCurrent() {
+      const done = current;
+      const r = rows.get(done.index);
+      paintProgress();
+      try {
+        if (done.writable) {
+          await done.writeChain;
+          await done.writable.close();
+        } else {
+          const blob = new Blob(done.chunks);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = done.name;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        }
+        r.fill.style.width = '100%';
+        r.note.textContent = done.received === done.size
+          ? `Done, ${fmtSize(done.received)} received.`
+          : `Done, but ${fmtSize(done.received)} received when ${fmtSize(done.size)} was expected.`;
+      } catch (err) {
+        r.note.textContent = 'Could not save file: ' + (err.message || err);
+      }
+      r.btn.disabled = !directReady;
+      current = null;
+      if (hostGone && !queue.length) {
+        setStatus('err', 'The sender has stopped sharing.');
+        setButtons(false);
+      }
+      pump();
+    }
+
+    function failCurrent(reason) {
+      const failed = current;
+      current = null;
+      const r = rows.get(failed.index);
+      r.note.textContent = reason;
+      r.bar.style.display = 'none';
+      r.btn.disabled = !directReady;
+      if (failed.writable) failed.writable.abort().catch(() => {});
+      pump();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: filet-signal
+    runtime: node
+    plan: free
+    rootDir: signaling
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
