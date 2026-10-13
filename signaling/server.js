@@ -21,6 +21,12 @@ import { WebSocketServer, WebSocket } from 'ws';
 const PORT = Number(process.env.PORT) || 8080;
 const MAX_PEERS_PER_ROOM = 50;
 
+// Self-ping to keep a Render free-tier instance from sleeping. Render sets
+// RENDER_EXTERNAL_URL automatically; SELF_URL can be used elsewhere. When
+// neither is set (e.g. local development) the self-ping is disabled.
+const SELF_URL = process.env.SELF_URL || process.env.RENDER_EXTERNAL_URL || '';
+const SELF_PING_INTERVAL_MS = 2 * 60 * 1000;
+
 const rooms = new Map(); // room -> { host: WebSocket, peers: Map<peerId, WebSocket> }
 
 const httpServer = http.createServer((req, res) => {
@@ -136,4 +142,23 @@ wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, () => {
   console.log(`filet signaling server listening on port ${PORT}`);
+  startSelfPing();
 });
+
+function startSelfPing() {
+  if (!SELF_URL) {
+    console.log('self-ping disabled (no SELF_URL or RENDER_EXTERNAL_URL set)');
+    return;
+  }
+  const target = `${SELF_URL.replace(/\/+$/, '')}/ping`;
+  console.log(`self-ping every ${SELF_PING_INTERVAL_MS / 1000}s -> ${target}`);
+  const ping = async () => {
+    try {
+      const res = await fetch(target, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) console.warn(`self-ping got HTTP ${res.status}`);
+    } catch (err) {
+      console.warn(`self-ping failed: ${err.message}`);
+    }
+  };
+  setInterval(ping, SELF_PING_INTERVAL_MS).unref();
+}
