@@ -209,13 +209,69 @@
       color: var(--muted);
       font-size: 12px;
     }
+
+    .join {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .join label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .join form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .join input {
+      flex: 1;
+      min-width: 0;
+      padding: 9px 12px;
+      font-size: 15px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .join input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    .join .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
   </style>
 </head>
 
 <body>
   <main>
     <h1>filet</h1>
-    <p class="sub">Files shared directly from the sender's machine.</p>
+    <p class="sub" id="sub">Files shared directly from the sender's machine.</p>
+
+    <div id="join" class="join">
+      <label for="codeInput">Enter the share code or paste the link the sender gave you</label>
+      <form id="joinForm">
+        <input id="codeInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. Q7gJ9xAB">
+        <button type="submit">Open</button>
+      </form>
+      <div class="hint">The code is the part after the # in the share link.</div>
+    </div>
 
     <div id="status" class="status busy"><span class="dot"></span><span id="statusText">Connecting to sender…</span>
     </div>
@@ -244,6 +300,7 @@
     const $ = (id) => document.getElementById(id);
     const statusEl = $('status'), statusText = $('statusText'), filesEl = $('files');
     const fallbackEl = $('fallback'), fallbackBody = $('fallbackBody');
+    const joinEl = $('join'), joinForm = $('joinForm'), codeInput = $('codeInput'), subEl = $('sub');
 
     // The link looks like  https://page/#ROOM  or, for local testing,
     // https://page/#r=ROOM&s=ws://localhost:8787
@@ -259,10 +316,46 @@
     const queue = [];
     const rows = new Map();
 
+    joinForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const code = extractCode(codeInput.value);
+      if (!code) {
+        codeInput.focus();
+        return;
+      }
+      // Keep any local-testing signaling override, then reload so all
+      // connection state starts fresh for the new room.
+      const override = signalUrl !== CONFIG.signalUrl ? `&s=${signalUrl}` : '';
+      location.hash = override ? `r=${code}${override}` : code;
+      location.reload();
+    });
+
     if (!room) {
-      setStatus('err', 'This link is missing its share code.');
+      showJoin('');
     } else {
+      subEl.innerHTML = '';
+      subEl.append('Share code: ');
+      const codeEl = document.createElement('span'); codeEl.className = 'code'; codeEl.textContent = room;
+      subEl.appendChild(codeEl);
       connectSignaling();
+    }
+
+    // Accept a bare code, a full share link, or a local-testing link.
+    function extractCode(text) {
+      const t = (text || '').trim();
+      if (!t) return '';
+      const hashAt = t.indexOf('#');
+      const frag = hashAt >= 0 ? t.slice(hashAt + 1) : t;
+      const parsed = parseHash('#' + frag);
+      const code = (parsed.room || '').trim();
+      return /^[A-Za-z0-9_-]{4,32}$/.test(code) ? code : '';
+    }
+
+    function showJoin(prefill) {
+      statusEl.style.display = 'none';
+      joinEl.style.display = 'block';
+      codeInput.value = prefill || '';
+      codeInput.focus();
     }
 
     // ----------------------------------------------------------------- UI
@@ -363,6 +456,12 @@
             setStatus('err', msg.error === 'no-such-room'
               ? 'This link has expired or the sender has stopped sharing.'
               : 'Signaling error: ' + msg.error);
+            if (msg.error === 'no-such-room') {
+              // Let the receiver try a different code without editing the URL.
+              joinEl.style.display = 'block';
+              codeInput.value = room;
+              codeInput.select();
+            }
             break;
         }
       };
