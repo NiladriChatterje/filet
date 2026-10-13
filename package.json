@@ -1,6 +1,6 @@
 {
   "name": "filet-cli",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Share local files instantly via a public URL, peer to peer when possible, streamed directly from your machine.",
   "main": "index.js",
   "type": "module",
@@ -10,13 +10,14 @@
   "files": [
     "index.js",
     "lib/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/smoke.mjs"
   },
   "keywords": [
     "file-sharing",
@@ -33,5 +34,16 @@
     "localtunnel": "^2.0.2",
     "node-datachannel": "^0.33.4",
     "ws": "^8.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NiladriChatterje/filet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NiladriChatterje/filet/issues"
+  },
+  "homepage": "https://github.com/NiladriChatterje/filet#readme",
+  "overrides": {
+    "axios": "^1.20.0"
   }
 }
