@@ -7,10 +7,10 @@ import fs from 'fs';
 import { startDirectHost, shutdownDirect } from './lib/direct.js';
 
 // Where the receiver page is hosted (Netlify) and where the signaling server
-// runs (Render). Both can be overridden with environment variables, which is
+// runs (Cloudflare Workers). Both can be overridden with environment variables, which is
 // handy for local testing.
 const PAGE_URL = (process.env.FILET_PAGE_URL || 'https://filet-share.netlify.app').replace(/\/+$/, '');
-const SIGNAL_URL = process.env.FILET_SIGNAL_URL || 'wss://filet-signal.onrender.com';
+const SIGNAL_URL = process.env.FILET_SIGNAL_URL || 'wss://filet-signal.YOUR-SUBDOMAIN.workers.dev';
 
 const filePaths = process.argv.slice(2);
 
@@ -167,7 +167,7 @@ const start = () => {
         return null;
       });
 
-    console.log('Connecting to signaling server for direct transfer (this can take up to a minute if the server is waking up)...');
+    console.log('Connecting to signaling server for direct transfer...');
 
     try {
       direct = await startDirectHost({

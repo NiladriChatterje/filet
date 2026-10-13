@@ -99,10 +99,10 @@
 
   <script>
     // ---------------------------------------------------------------------
-    // Configuration: set this to your Render signaling server URL.
+    // Configuration: set this to your Cloudflare Worker signaling URL.
     // ---------------------------------------------------------------------
     const CONFIG = {
-      signalUrl: 'wss://filet-signal.onrender.com',
+      signalUrl: 'wss://filet-signal.YOUR-SUBDOMAIN.workers.dev',
     };
 
     const CONNECT_TIMEOUT_MS = 15000;
@@ -208,8 +208,7 @@
     }
 
     function connectSignaling() {
-      ws = new WebSocket(signalUrl);
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room }));
+      ws = new WebSocket(`${signalUrl.replace(/\/+$/, '')}/room/${encodeURIComponent(room)}`);
       ws.onmessage = (ev) => {
         let msg; try { msg = JSON.parse(ev.data); } catch { return; }
         switch (msg.type) {
