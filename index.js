@@ -6,11 +6,11 @@ import path from 'path';
 import fs from 'fs';
 import { startDirectHost, shutdownDirect } from './lib/direct.js';
 
-// Where the receiver page is hosted (Netlify) and where the signaling server
+// Where the receiver page is hosted (GitHub Pages) and where the signaling server
 // runs (Cloudflare Workers). Both can be overridden with environment variables, which is
 // handy for local testing.
-const PAGE_URL = (process.env.FILET_PAGE_URL || 'https://filet-share.netlify.app').replace(/\/+$/, '');
-const SIGNAL_URL = process.env.FILET_SIGNAL_URL || 'wss://filet-signal.YOUR-SUBDOMAIN.workers.dev';
+const PAGE_URL = (process.env.FILET_PAGE_URL || 'https://niladrichatterje.github.io/filet').replace(/\/+$/, '');
+const SIGNAL_URL = process.env.FILET_SIGNAL_URL || 'wss://filet-signal.radongtxgpu.workers.dev';
 
 const filePaths = process.argv.slice(2);
 

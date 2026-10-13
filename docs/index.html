@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,6 +19,7 @@
       --err: #b91c1c;
       --bar: #e5e7eb;
     }
+
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #111318;
@@ -33,7 +35,11 @@
         --bar: #2a2f3a;
       }
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: var(--bg);
@@ -41,51 +47,178 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       line-height: 1.45;
     }
-    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
-    h1 { font-size: 22px; margin: 0 0 4px; }
-    .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 16px 64px;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 4px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin: 0 0 24px;
+      font-size: 14px;
+    }
+
     .status {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
-      background: var(--card); font-size: 14px; margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      font-size: 14px;
+      margin-bottom: 20px;
     }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
-    .status.ok .dot { background: var(--ok); }
-    .status.warn .dot { background: var(--warn); }
-    .status.err .dot { background: var(--err); }
-    .status.busy .dot { animation: pulse 1.2s ease-in-out infinite; }
-    @keyframes pulse { 0%, 100% { opacity: .35 } 50% { opacity: 1 } }
-    ul { list-style: none; padding: 0; margin: 0; }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex: none;
+    }
+
+    .status.ok .dot {
+      background: var(--ok);
+    }
+
+    .status.warn .dot {
+      background: var(--warn);
+    }
+
+    .status.err .dot {
+      background: var(--err);
+    }
+
+    .status.busy .dot {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: .35
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
     li {
-      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
-      padding: 14px 16px; margin-bottom: 10px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
     }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .name { font-weight: 600; word-break: break-all; }
-    .size { color: var(--muted); font-size: 13px; margin-left: 8px; white-space: nowrap; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .name {
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .size {
+      color: var(--muted);
+      font-size: 13px;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
     button {
-      background: var(--accent); color: #fff; border: 0; border-radius: 6px;
-      padding: 8px 16px; font-size: 14px; cursor: pointer; flex: none;
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      flex: none;
     }
-    button:hover { background: var(--accent-hover); }
-    button:disabled { opacity: .5; cursor: default; }
-    .bar { height: 6px; background: var(--bar); border-radius: 3px; margin-top: 10px; overflow: hidden; display: none; }
-    .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
-    .note { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 1em; }
+
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: default;
+    }
+
+    .bar {
+      height: 6px;
+      background: var(--bar);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .bar>div {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      transition: width .15s linear;
+    }
+
+    .note {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+      min-height: 1em;
+    }
+
     .fallback {
-      display: none; margin-top: 24px; padding: 16px; border-radius: 8px;
-      border: 1px solid var(--line); background: var(--card); font-size: 14px;
+      display: none;
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      font-size: 14px;
     }
-    .fallback a { color: var(--accent); word-break: break-all; }
-    footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+
+    .fallback a {
+      color: var(--accent);
+      word-break: break-all;
+    }
+
+    footer {
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 12px;
+    }
   </style>
 </head>
+
 <body>
   <main>
     <h1>filet</h1>
     <p class="sub">Files shared directly from the sender's machine.</p>
 
-    <div id="status" class="status busy"><span class="dot"></span><span id="statusText">Connecting to sender…</span></div>
+    <div id="status" class="status busy"><span class="dot"></span><span id="statusText">Connecting to sender…</span>
+    </div>
 
     <ul id="files"></ul>
 
@@ -102,7 +235,7 @@
     // Configuration: set this to your Cloudflare Worker signaling URL.
     // ---------------------------------------------------------------------
     const CONFIG = {
-      signalUrl: 'wss://filet-signal.YOUR-SUBDOMAIN.workers.dev',
+      signalUrl: 'wss://filet-signal.radongtxgpu.workers.dev',
     };
 
     const CONNECT_TIMEOUT_MS = 15000;
@@ -257,11 +390,11 @@
         if (data.type === 'answer' && data.sdp) {
           await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
           remoteSet = true;
-          for (const c of pendingCandidates) await pc.addIceCandidate(c).catch(() => {});
+          for (const c of pendingCandidates) await pc.addIceCandidate(c).catch(() => { });
           pendingCandidates = [];
         } else if (data.candidate) {
           const cand = { candidate: data.candidate, sdpMid: data.sdpMid ?? '0' };
-          if (remoteSet) await pc.addIceCandidate(cand).catch(() => {});
+          if (remoteSet) await pc.addIceCandidate(cand).catch(() => { });
           else pendingCandidates.push(cand);
         }
       } catch (err) {
@@ -425,9 +558,10 @@
       r.note.textContent = reason;
       r.bar.style.display = 'none';
       r.btn.disabled = !directReady;
-      if (failed.writable) failed.writable.abort().catch(() => {});
+      if (failed.writable) failed.writable.abort().catch(() => { });
       pump();
     }
   </script>
 </body>
+
 </html>
