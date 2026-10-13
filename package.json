@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "filet": "./index.js"
+    "filet": "index.js"
   },
   "files": [
     "index.js",
